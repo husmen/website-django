@@ -1,12 +1,16 @@
 language: python
 python:
-  - "3.6"
   - "3.7"
   - "3.8"
-  - "nightly"  # nightly build
+  #- "nightly"  # nightly build
+services:
+  - postgresql
 # command to install dependencies
 install:
   - pip install -r requirements.txt
+# command before test
+before_script:
+  - psql -c 'create database travis_ci_test;' -U postgres
 # command to run tests
 script:
-  - pytest
+  - python manage.py test
