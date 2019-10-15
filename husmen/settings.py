@@ -14,11 +14,11 @@ import os
 import environ
 env = environ.Env(
     # set casting, default value
-    DEBUG=(bool, True)
+    DEBUG=(bool, False)
 )
 # reading .env file
 environ.Env.read_env()
-print(env.db())
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'markdownx',
+    'home',
+    'portfolio',
 ]
 
 MIDDLEWARE = [
@@ -61,7 +64,7 @@ ROOT_URLCONF = 'husmen.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        "DIRS": ["husmen/templates/"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -81,29 +84,39 @@ WSGI_APPLICATION = 'husmen.wsgi.application'
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 # [START db_setup]
-if os.getenv('GAE_APPLICATION', None):
-    # Running on production App Engine, so connect to Google Cloud SQL using
-    # the unix socket at /cloudsql/<your-cloudsql-connection string>
-    DATABASES = {
-        'default': env.db(), # Raises ImproperlyConfigured exception if DATABASE_URL not in os.environ
-    }
-else:
+# When running on production App Engine, connect to Google Cloud SQL
+DATABASES = {
+    'default': env.db(), # Raises ImproperlyConfigured exception if DATABASE_URL not in os.environ
+}
+
+if not os.getenv('GAE_APPLICATION', None):
     # Running locally so connect to either a local MySQL instance or connect to
     # Cloud SQL via the proxy. To start the proxy via command line:
     #
     #     $ cloud_sql_proxy -instances=[INSTANCE_CONNECTION_NAME]=tcp:5432
     #
     # See https://cloud.google.com/sql/docs/postgres/connect-admin-proxy
+    # Replace values for running locally
+    #DATABASES['default']['HOST'] = "127.0.0.1"
+    #DATABASES['default']['PORT'] = "5432"
+    
+    # Use SQLite if there are connectivity problems
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'HOST': env('DB_HOST'),
-            'PORT': env('DB_PORT'),
-            'NAME': env('DB_NAME'),
-            'USER': env('DB_USER'),
-            'PASSWORD': env('DB_PW'),
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': 'db.sqlite3',
         }
     }
+else:
+    # Using Cloud SQL turned out to be very expensive, so here I am going back to sqlite
+    # To use Cloud SQL, remove the else part, and update .env configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': 'db.sqlite3',
+        }
+    }
+
 # [END db_setup]
 
 
@@ -145,6 +158,15 @@ USE_TZ = True
 
 STATIC_ROOT = 'static'
 STATIC_URL = '/static/'
+#STATIC_PATH = os.path.join(BASE_DIR,STATIC_ROOT)
+#STATICFILES_DIRS = ('media',)
 
-# Add SSL redirect
-SECURE_SSL_REDIRECT = True
+# Media files
+MEDIA_ROOT = 'media'
+MEDIA_URL = '/media/'
+#MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Add SSL redirect, but only when running on the cloud
+if os.getenv('GAE_APPLICATION', None):
+    SECURE_SSL_REDIRECT = True
+else:
+    SECURE_SSL_REDIRECT = False
